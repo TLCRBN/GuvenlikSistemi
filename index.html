@@ -1,844 +1,721 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Güvenlik Sorumlu Sistemi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Güvenlik Sistem</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
             color: white;
             height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Login Ekranı */
         .login-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 100%);
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f4b 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 3000;
+            padding: 20px;
         }
         .login-box {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.2);
-            width: 90%;
-            max-width: 400px;
+            width: 100%;
+            max-width: 350px;
             text-align: center;
         }
-        .login-title { font-size: 1.8em; margin-bottom: 10px; }
-        .login-subtitle { color: #aaa; margin-bottom: 30px; }
-        .role-select {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+        .logo-big {
+            font-size: 4em;
+            margin-bottom: 10px;
         }
-        .role-btn {
-            flex: 1;
+        .app-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .app-version {
+            color: #6b7280;
+            font-size: 0.8em;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+            color: #9ca3af;
+        }
+        .input-field {
+            width: 100%;
             padding: 15px;
             background: rgba(255,255,255,0.1);
-            border: 2px solid transparent;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .role-btn:hover { background: rgba(255,255,255,0.2); }
-        .role-btn.active { 
-            border-color: #00d2ff; 
-            background: rgba(0,210,255,0.2);
-        }
-        .role-icon { font-size: 2em; margin-bottom: 5px; }
-        .role-name { font-size: 0.9em; }
-        .login-input {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
+            border-radius: 12px;
             color: white;
             font-size: 1em;
+            transition: all 0.3s;
         }
-        .login-input::placeholder { color: #888; }
-        .login-btn {
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(255,255,255,0.15);
+        }
+        .btn-primary {
             width: 100%;
-            padding: 15px;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            padding: 16px;
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             color: white;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: bold;
             cursor: pointer;
+            margin-top: 10px;
             transition: transform 0.2s;
         }
-        .login-btn:hover { transform: scale(1.02); }
+        .btn-primary:active { transform: scale(0.98); }
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.85em;
+            margin-top: 10px;
+            display: none;
+        }
 
-        /* Ana Uygulama */
-        .app-container { display: none; height: 100vh; flex-direction: column; }
+        /* Ana Ekran */
+        .main-screen { display: none; flex-direction: column; height: 100vh; }
 
         /* Header */
         .header {
-            background: rgba(0,0,0,0.4);
+            background: rgba(11, 15, 40, 0.95);
             backdrop-filter: blur(10px);
-            padding: 10px 20px;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .logo { font-size: 1.3em; font-weight: bold; }
-        .user-badge {
-            background: linear-gradient(90deg, #f093fb, #f5576c);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        .user-badge.admin {
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-        }
-        .header-stats {
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             display: flex;
-            gap: 15px;
-            font-size: 0.85em;
-        }
-        .stat-pill {
-            background: rgba(255,255,255,0.1);
-            padding: 5px 12px;
-            border-radius: 15px;
-        }
-        .clock { font-size: 1.3em; font-weight: bold; color: #00d2ff; }
-        .header-actions { display: flex; gap: 10px; }
-        .header-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85em;
-            transition: all 0.2s;
-        }
-        .header-btn:hover { background: rgba(255,255,255,0.2); }
-
-        /* Ana İçerik */
-        .main-content {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 320px;
-            gap: 15px;
-            padding: 15px;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1em;
             overflow: hidden;
         }
+        .header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .header-info { display: flex; flex-direction: column; }
+        .header-name { font-weight: 600; font-size: 0.95em; }
+        .header-role { font-size: 0.75em; color: #6b7280; }
+        .header-time { font-size: 1.2em; font-weight: bold; color: #3b82f6; }
 
-        /* Grid Alanı */
-        .grid-area {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        /* İçerik Alanı */
+        .content {
+            flex: 1;
             overflow-y: auto;
-            padding-right: 5px;
-        }
-        .grid-area::-webkit-scrollbar { width: 6px; }
-        .grid-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
+            padding: 15px;
+            padding-bottom: 80px;
         }
         .section-title {
-            font-size: 0.9em;
+            font-size: 0.75em;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #aaa;
-        }
-        .view-toggle {
+            letter-spacing: 1px;
+            color: #6b7280;
+            margin: 15px 0 10px 0;
             display: flex;
-            gap: 5px;
-            background: rgba(0,0,0,0.3);
-            padding: 3px;
-            border-radius: 8px;
+            align-items: center;
+            gap: 8px;
         }
-        .view-btn {
-            background: transparent;
-            border: none;
-            color: #888;
-            padding: 5px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.8em;
-        }
-        .view-btn.active { background: rgba(255,255,255,0.2); color: white; }
 
-        /* Kart Grid */
-        .card-grid {
+        /* Grid */
+        .grid-2 {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 12px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
         }
 
+        /* Kart */
         .location-card {
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 12px;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        .location-card:hover { 
-            transform: translateY(-3px); 
-            border-color: rgba(255,255,255,0.3);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-        }
-        .location-card.occupied { 
-            background: linear-gradient(135deg, rgba(0,210,255,0.1), rgba(58,123,213,0.1));
-            border-color: rgba(0,210,255,0.3);
-        }
-        .location-card.alert { 
-            animation: alertPulse 2s infinite;
-        }
-        @keyframes alertPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
-            50% { box-shadow: 0 0 20px 5px rgba(255,0,0,0.3); }
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .card-title { font-weight: bold; font-size: 0.9em; }
-        .card-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #27ae60;
-            box-shadow: 0 0 5px #27ae60;
-        }
-        .location-card.occupied .card-status { 
-            background: #e74c3c; 
-            box-shadow: 0 0 5px #e74c3c;
-        }
-
-        .card-body {
-            min-height: 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            border-radius: 16px;
+            padding: 15px;
             text-align: center;
+            position: relative;
+            transition: all 0.3s;
         }
-        .empty-state { color: #666; font-size: 0.8em; }
-        .person-info { width: 100%; }
-        .person-name { 
-            font-weight: bold; 
-            font-size: 0.95em;
+        .location-card:active { transform: scale(0.95); }
+        .location-card.occupied {
+            background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2));
+            border-color: rgba(59,130,246,0.5);
+        }
+        .location-card.me {
+            background: linear-gradient(135deg, rgba(34,197,94,0.3), rgba(21,128,61,0.3));
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34,197,94,0.3);
+        }
+        .card-icon { font-size: 1.5em; margin-bottom: 5px; }
+        .card-name { font-weight: 600; font-size: 0.9em; margin-bottom: 3px; }
+        .card-status { font-size: 0.75em; color: #6b7280; }
+        .card-person { 
+            font-size: 0.8em; 
+            font-weight: 600; 
+            margin-top: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .person-meta {
-            font-size: 0.75em;
-            color: #aaa;
-            margin-top: 3px;
-        }
-
-        .card-actions {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
+        .card-btn {
+            width: 100%;
+            padding: 10px;
             margin-top: 10px;
-        }
-        .action-btn {
-            background: rgba(255,255,255,0.1);
             border: none;
-            color: white;
-            padding: 8px 5px;
-            border-radius: 6px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.75em;
             transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
         }
-        .action-btn:hover { background: rgba(255,255,255,0.2); }
-        .action-btn .icon { font-size: 1.3em; }
-        .action-btn .label { font-size: 0.7em; }
-
-        .btn-in { background: rgba(39,174,96,0.3); }
-        .btn-in:hover { background: rgba(39,174,96,0.5); }
-        .btn-out { background: rgba(231,76,60,0.3); }
-        .btn-out:hover { background: rgba(231,76,60,0.5); }
-        .btn-alert { background: rgba(243,156,18,0.3); }
-        .btn-alert:hover { background: rgba(243,156,18,0.5); }
-        .btn-msg { background: rgba(155,89,182,0.3); }
-        .btn-msg:hover { background: rgba(155,89,182,0.5); }
-        .btn-wp { background: rgba(37,211,102,0.3); }
-        .btn-wp:hover { background: rgba(37,211,102,0.5); }
-        .btn-call { background: rgba(52,152,219,0.3); }
-        .btn-call:hover { background: rgba(52,152,219,0.5); }
-
-        .action-btn:disabled {
-            opacity: 0.3;
+        .btn-enter { background: #22c55e; color: white; }
+        .btn-exit { background: #ef4444; color: white; }
+        .btn-info { background: rgba(255,255,255,0.1); color: white; }
+        .btn-disabled { 
+            background: #374151; 
+            color: #6b7280; 
             cursor: not-allowed;
         }
 
-        /* Yan Panel */
-        .side-panel {
+        /* Alt Menü */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(11, 15, 40, 0.98);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 100;
+        }
+        .nav-item {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-        }
-
-        .panel-box {
-            background: rgba(0,0,0,0.3);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .panel-header {
-            background: rgba(255,255,255,0.05);
-            padding: 12px 15px;
-            font-weight: bold;
-            font-size: 0.9em;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-        .panel-content {
-            padding: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        /* Bildirimler */
-        .notification-item {
-            background: rgba(255,255,255,0.05);
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            border-left: 3px solid #00d2ff;
-            position: relative;
-            animation: slideIn 0.3s ease;
-            font-size: 0.85em;
-        }
-        .notification-item.private { border-left-color: #9b59b6; }
-        .notification-item.alert { border-left-color: #e74c3c; }
-        .notification-item.system { border-left-color: #f39c12; }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .notif-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .notif-title { font-weight: bold; font-size: 0.9em; }
-        .notif-close {
-            background: none;
-            border: none;
-            color: #e74c3c;
+            gap: 4px;
+            padding: 5px 20px;
             cursor: pointer;
-            font-size: 1.2em;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .notif-body { color: #ccc; margin-bottom: 5px; }
-        .notif-footer {
-            font-size: 0.75em;
-            color: #888;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Aktif Kişiler */
-        .active-person {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 5px;
-            border-radius: 8px;
-            cursor: pointer;
+            color: #6b7280;
             transition: all 0.2s;
         }
-        .active-person:hover { background: rgba(255,255,255,0.1); }
-        .person-avatar {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-        .person-details { flex: 1; }
-        .person-name-small { font-weight: 600; font-size: 0.9em; }
-        .person-loc { font-size: 0.75em; color: #888; }
-        .person-actions { display: flex; gap: 5px; }
-        .person-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8em;
-        }
-        .person-btn:hover { background: rgba(255,255,255,0.2); }
+        .nav-item.active { color: #3b82f6; }
+        .nav-icon { font-size: 1.4em; }
+        .nav-label { font-size: 0.7em; }
 
-        /* Modaller */
-        .modal-overlay {
+        /* Modal */
+        .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8);
             z-index: 2000;
             justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(5px);
+            align-items: flex-end;
         }
-        .modal-box {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 15px;
-            width: 90%;
-            max-width: 450px;
-            max-height: 80vh;
-            overflow: hidden;
-            animation: modalPop 0.3s ease;
+        .modal-content {
+            background: #1a1f4b;
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 24px 24px 0 0;
+            padding: 20px;
+            animation: slideUp 0.3s ease;
         }
-        @keyframes modalPop {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
         }
         .modal-header {
-            background: rgba(0,0,0,0.3);
-            padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
         .modal-title { font-size: 1.2em; font-weight: bold; }
-        .modal-subtitle { color: #888; font-size: 0.9em; margin-top: 5px; }
-        .modal-body { padding: 20px; }
-        .modal-footer {
-            padding: 15px 20px;
-            background: rgba(0,0,0,0.2);
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .form-group { margin-bottom: 15px; }
-        .form-label { 
-            display: block; 
-            margin-bottom: 5px; 
-            font-size: 0.9em; 
-            color: #aaa;
-        }
-        .form-input, .form-select, .form-textarea {
-            width: 100%;
-            padding: 12px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: white;
-            font-size: 0.95em;
-        }
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: #00d2ff;
-        }
-        .form-textarea { min-height: 80px; resize: vertical; }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-            color: white;
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,210,255,0.3); }
-        .btn-secondary {
+        .modal-close {
             background: rgba(255,255,255,0.1);
+            border: none;
             color: white;
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
-        .btn-danger {
-            background: rgba(231,76,60,0.8);
-            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2em;
+            cursor: pointer;
         }
 
-        /* Kişi Seçim Listesi */
-        .person-select-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-            padding: 5px;
+        /* Profil Sayfası */
+        .profile-section {
+            text-align: center;
+            padding: 20px 0;
         }
-        .person-select-item {
+        .profile-avatar-big {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            margin: 0 auto 15px auto;
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.2s;
+            justify-content: center;
+            font-size: 2.5em;
+            position: relative;
+            overflow: hidden;
         }
-        .person-select-item:hover { background: rgba(255,255,255,0.1); }
-        .person-select-item.selected { 
-            background: rgba(0,210,255,0.2); 
-            border: 1px solid rgba(0,210,255,0.5);
-        }
-        .select-checkbox {
-            width: 18px;
-            height: 18px;
-            accent-color: #00d2ff;
-        }
-
-        /* Tom Uyarısı */
-        .tom-alert {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            padding: 40px 60px;
-            border-radius: 20px;
-            text-align: center;
-            z-index: 2500;
-            display: none;
-            box-shadow: 0 20px 60px rgba(231,76,60,0.5);
-            animation: tomPulse 1s infinite;
-        }
-        @keyframes tomPulse {
-            0%, 100% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.05); }
-        }
-        .tom-title { font-size: 2em; font-weight: bold; margin-bottom: 10px; }
-        .tom-time { font-size: 1.2em; opacity: 0.9; }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .main-content { grid-template-columns: 1fr; }
-            .side-panel { display: none; }
-            .card-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-        }
-
-        /* Bildirim Rozeti */
-        .badge {
+        .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+        .change-photo {
             position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #e74c3c;
-            color: white;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            padding: 8px;
             font-size: 0.7em;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-weight: bold;
+            cursor: pointer;
         }
+        .profile-name { font-size: 1.3em; font-weight: bold; margin-bottom: 5px; }
+        .profile-role { color: #6b7280; font-size: 0.9em; }
+
+        /* Liste Görünümü */
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        .list-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            overflow: hidden;
+        }
+        .list-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .list-info { flex: 1; }
+        .list-name { font-weight: 600; margin-bottom: 3px; }
+        .list-loc { font-size: 0.8em; color: #6b7280; }
+        .list-actions { display: flex; gap: 10px; }
+        .list-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+        .btn-wp { background: #25d366; color: white; }
+        .btn-call { background: #3b82f6; color: white; }
+
+        /* Bildirim */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #1a1f4b;
+            padding: 15px 20px;
+            border-radius: 12px;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.3s;
+            max-width: 90%;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast.alert { border-left-color: #ef4444; }
+        .toast.success { border-left-color: #22c55e; }
+
+        /* Yükleme */
+        .loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a0e27;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 4000;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Admin Panel */
+        .admin-badge {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            margin-left: 8px;
+        }
+        .admin-only { display: none; }
+        .admin-only.show { display: block; }
     </style>
 <base target="_blank">
 </head>
 <body>
+    <!-- Yükleme Ekranı -->
+    <div class="loading" id="loadingScreen">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; color: #6b7280;">Bağlanıyor...</p>
+    </div>
+
     <!-- Login Ekranı -->
     <div class="login-screen" id="loginScreen">
         <div class="login-box">
-            <div class="login-title">🔒 Güvenlik Sistemi</div>
-            <div class="login-subtitle">Rolünüzü seçin ve giriş yapın</div>
+            <div class="logo-big">🔒</div>
+            <div class="app-name">Güvenlik Sistem</div>
+            <div class="app-version">v2.0 - Mobil</div>
 
-            <div class="role-select">
-                <div class="role-btn" onclick="selectRole('admin')" id="roleAdmin">
-                    <div class="role-icon">👮</div>
-                    <div class="role-name">Vardiya Sorumlusu</div>
-                </div>
-                <div class="role-btn" onclick="selectRole('user')" id="roleUser">
-                    <div class="role-icon">🛡️</div>
-                    <div class="role-name">Güvenlik Görevlisi</div>
-                </div>
+            <div class="input-group">
+                <label class="input-label">Telefon Numarası (10 hane)</label>
+                <input type="tel" class="input-field" id="loginPhone" placeholder="5XX XXX XXXX" maxlength="10">
             </div>
 
-            <input type="text" class="login-input" id="loginName" placeholder="Adınız">
-            <input type="text" class="login-input" id="loginSurname" placeholder="Soyadınız">
-            <button class="login-btn" onclick="doLogin()">Giriş Yap</button>
+            <div class="input-group">
+                <label class="input-label">Ad Soyad</label>
+                <input type="text" class="input-field" id="loginName" placeholder="Adınız Soyadınız">
+            </div>
+
+            <div class="error-msg" id="loginError"></div>
+            <button class="btn-primary" onclick="doLogin()">Giriş Yap</button>
+
+            <p style="margin-top: 20px; font-size: 0.8em; color: #6b7280;">
+                İlk giriş = kayıt olma<br>
+                Bilgileriniz hatırlanacak
+            </p>
         </div>
     </div>
 
-    <!-- Tom Uyarısı -->
-    <div class="tom-alert" id="tomAlert">
-        <div class="tom-title">🚨 TOM BASILACAK!</div>
-        <div class="tom-time">Saat başı otomatik hatırlatma</div>
-    </div>
-
-    <!-- Ana Uygulama -->
-    <div class="app-container" id="appContainer">
+    <!-- Ana Ekran -->
+    <div class="main-screen" id="mainScreen">
         <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <div class="logo">🔒 GÜVENLİK</div>
-                <div class="user-badge" id="userBadge">Görevli</div>
-                <div class="header-stats">
-                    <div class="stat-pill">Dolu: <span id="statOccupied">0</span></div>
-                    <div class="stat-pill">Boş: <span id="statEmpty">20</span></div>
+                <div class="header-avatar" id="headerAvatar" onclick="showProfile()">
+                    <span id="avatarText">👤</span>
+                </div>
+                <div class="header-info">
+                    <div class="header-name" id="headerName">-</div>
+                    <div class="header-role" id="headerRole">Güvenlik Görevlisi</div>
                 </div>
             </div>
-            <div class="clock" id="clock">00:00</div>
-            <div class="header-actions">
-                <button class="header-btn" onclick="showMessageModal()">✉️ Mesaj</button>
-                <button class="header-btn" onclick="showEmergencyModal()" id="emergencyBtn" style="display:none;">🚨 Acil</button>
-                <button class="header-btn" onclick="doLogout()">Çıkış</button>
+            <div class="header-time" id="clock">00:00</div>
+        </div>
+
+        <!-- İçerik -->
+        <div class="content" id="mainContent">
+            <!-- Kuleler -->
+            <div class="section-title">🏢 Kuleler</div>
+            <div class="grid-2" id="towerGrid"></div>
+
+            <!-- Kapılar -->
+            <div class="section-title">🚪 Kapılar</div>
+            <div class="grid-2" id="gateGrid"></div>
+
+            <!-- Diğer -->
+            <div class="section-title">📍 Diğer Noktalar</div>
+            <div class="grid-3" id="otherGrid"></div>
+        </div>
+
+        <!-- Liste Görünümü (Gizli) -->
+        <div class="content" id="listContent" style="display:none;">
+            <div class="section-title">👥 Aktif Görevliler</div>
+            <div id="activeList"></div>
+        </div>
+
+        <!-- Profil Görünümü (Gizli) -->
+        <div class="content" id="profileContent" style="display:none;">
+            <div class="profile-section">
+                <div class="profile-avatar-big" id="profileAvatar">
+                    <span style="font-size:1.5em;">👤</span>
+                    <div class="change-photo" onclick="changePhoto()">📷 Değiştir</div>
+                </div>
+                <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="uploadPhoto(event)">
+
+                <div class="profile-name" id="profileName">-</div>
+                <div class="profile-role" id="profileRole">-</div>
+
+                <div style="margin-top: 30px; text-align: left;">
+                    <div class="input-group">
+                        <label class="input-label">İsim Değiştir</label>
+                        <input type="text" class="input-field" id="editName" placeholder="Yeni isim">
+                    </div>
+                    <button class="btn-primary" onclick="updateName()">Güncelle</button>
+                </div>
+
+                <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                    <h3 style="margin-bottom: 15px; font-size: 1em;">📊 İstatistiklerim</h3>
+                    <div style="display: flex; justify-content: space-around;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #3b82f6;" id="statEntries">0</div>
+                            <div style="font-size: 0.75em; color: #6b7280;">Giriş</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5em; font-weight: bold; color: #22c55e;" id="statHours">0</div>
+                            <div style="font-size: 0.75em; color: #6b7280;">Saat</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-primary" style="margin-top: 30px; background: #ef4444;" onclick="doLogout()">
+                    🚪 Çıkış Yap (Hesabı Sıfırla)
+                </button>
             </div>
         </div>
 
-        <!-- Ana İçerik -->
-        <div class="main-content">
-            <!-- Grid Alanı -->
-            <div class="grid-area">
-                <!-- Kuleler -->
-                <div>
-                    <div class="section-header">
-                        <div class="section-title">🏢 Kuleler</div>
-                    </div>
-                    <div class="card-grid" id="towerGrid"></div>
-                </div>
-
-                <!-- Diğer -->
-                <div>
-                    <div class="section-header">
-                        <div class="section-title">🚪 Noktalar</div>
-                    </div>
-                    <div class="card-grid" id="pointGrid"></div>
-                </div>
+        <!-- Alt Menü -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="showTab('main')" id="navMain">
+                <div class="nav-icon">🏢</div>
+                <div class="nav-label">Lokasyon</div>
             </div>
-
-            <!-- Yan Panel -->
-            <div class="side-panel">
-                <!-- Bildirimler -->
-                <div class="panel-box">
-                    <div class="panel-header">
-                        <span>📢 Bildirimler</span>
-                        <button onclick="clearNotifications()" style="background:none;border:none;color:#888;cursor:pointer;font-size:0.8em;">Temizle</button>
-                    </div>
-                    <div class="panel-content" id="notificationList">
-                        <div style="text-align:center;color:#666;padding:20px;">Henüz bildirim yok</div>
-                    </div>
-                </div>
-
-                <!-- Aktif Kişiler -->
-                <div class="panel-box">
-                    <div class="panel-header">
-                        <span>👥 Aktif Görevliler</span>
-                        <span id="activeCount" style="font-size:0.8em;color:#888;">0</span>
-                    </div>
-                    <div class="panel-content" id="activeList">
-                        <div style="text-align:center;color:#666;padding:20px;">Aktif görevli yok</div>
-                    </div>
-                </div>
+            <div class="nav-item" onclick="showTab('list')" id="navList">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">Ekip</div>
+            </div>
+            <div class="nav-item" onclick="showTab('profile')" id="navProfile">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profil</div>
             </div>
         </div>
     </div>
 
     <!-- Giriş Modal -->
-    <div class="modal-overlay" id="entryModal">
-        <div class="modal-box">
+    <div class="modal" id="entryModal">
+        <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">🚪 Konuma Giriş</div>
-                <div class="modal-subtitle" id="entryLocationName">-</div>
+                <div class="modal-title">🚪 Giriş Yap</div>
+                <button class="modal-close" onclick="closeModal()">×</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">👤 Ad Soyad</label>
-                    <input type="text" class="form-input" id="entryPersonName" placeholder="Ad Soyad">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">📱 Telefon</label>
-                    <input type="tel" class="form-input" id="entryPersonPhone" placeholder="5XX XXX XXXX">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('entryModal')">İptal</button>
-                <button class="btn btn-primary" onclick="confirmEntry()">Giriş Yap</button>
+            <div id="entryModalContent">
+                <p style="margin-bottom: 20px; color: #9ca3af;">
+                    <span id="entryLocName" style="color: white; font-weight: bold;">-</span> konumuna giriş yapıyorsunuz.
+                </p>
+                <button class="btn-primary" onclick="confirmEntry()">✅ Girişi Onayla</button>
             </div>
         </div>
     </div>
 
-    <!-- Mesaj Gönderme Modal -->
-    <div class="modal-overlay" id="messageModal">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title">✉️ Mesaj Gönder</div>
-                <div class="modal-subtitle">Kişi veya grup seçin</div>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Alıcılar</label>
-                    <div class="person-select-list" id="recipientList"></div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Mesaj</label>
-                    <textarea class="form-textarea" id="messageText" placeholder="Mesajınızı yazın..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Veya Hızlı Mesaj</label>
-                    <select class="form-select" onchange="setQuickMessage(this.value)">
-                        <option value="">Seçin...</option>
-                        <option value="🚨 Dikkat! Gözünü dört aç!">🚨 Dikkat! Gözünü dört aç!</option>
-                        <option value="📍 Konumuna gitmen gerekiyor.">📍 Konumuna gitmen gerekiyor.</option>
-                        <option value="📞 Beni ara, acil!">📞 Beni ara, acil!</option>
-                        <option value="✅ Kontrol tamam, teşekkürler.">✅ Kontrol tamam, teşekkürler.</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('messageModal')">İptal</button>
-                <button class="btn btn-primary" onclick="sendMessage()">Gönder</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Acil Durum Modal -->
-    <div class="modal-overlay" id="emergencyModal">
-        <div class="modal-box" style="border-color:#e74c3c;">
-            <div class="modal-header" style="background:rgba(231,76,60,0.2);">
-                <div class="modal-title">🚨 ACİL DURUM BİLDİRİMİ</div>
-                <div class="modal-subtitle">Tüm personele anında iletilecek</div>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label" style="color:#e74c3c;">Acil Durum Tipi</label>
-                    <select class="form-select" id="emergencyType">
-                        <option value="alert">⚠️ Genel Uyarı</option>
-                        <option value="intrusion">🚷 İzinsiz Giriş</option>
-                        <option value="fire">🔥 Yangın Alarmı</option>
-                        <option value="medical">🏥 Sağlık Olayı</option>
-                        <option value="bomb">💣 Şüpheli Paket</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Açıklama</label>
-                    <textarea class="form-textarea" id="emergencyText" placeholder="Acil durum detayları..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('emergencyModal')">İptal</button>
-                <button class="btn btn-danger" onclick="sendEmergency()">🚨 HERKESE GÖNDER</button>
-            </div>
-        </div>
-    </div>
+    <!-- Bildirim Toast -->
+    <div class="toast" id="toast"></div>
 
     <!-- Ses -->
-    <audio id="alertSound" preload="auto">
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVanu87plHQUuh9Dz2YU2Bhxqv+zplkcODVGm5O+4ZSAEMYrO89GFNwYdcfDr4ZdJDQtPp+XyxGUhBjqT1/PQfS4GI3/R8tSFNwYdcfDr4plHDAtQp+TwxmUgBDeOzvPVhjYGHG3A7+SaSQ0MTKjl8b1kHwU2jc7z1YU1Bhxwv+zmm0gNC1Gn5O/EZSAF" type="audio/wav">
+    <audio id="notifSound" preload="auto">
+        <source src="data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFZYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFZYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAP/7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjI5AAAAAAAAAAAAAAAAJAJAAAAAAAAAAAEA//uQZAAAADhE00AAAAA0gAAAAExBTUAMEBIAAAAATAFDQBAAAxH/4iAAz/8R//uQZAAAADhE00AAAAA0gAAAAExBTUAMEBIAAAAATAFDQBAAAxH/4iAAz/8R" type="audio/mpeg">
     </audio>
 
     <script>
-        // ============ VERİLER ============
-        const locations = [
-            // Kuleler
-            { id: 1, name: "KULE 1", type: "tower", person: null, lastAlert: 0 },
-            { id: 2, name: "KULE 2", type: "tower", person: null, lastAlert: 0 },
-            { id: 3, name: "KULE 3", type: "tower", person: null, lastAlert: 0 },
-            { id: 4, name: "KULE 4", type: "tower", person: null, lastAlert: 0 },
-            { id: 5, name: "KULE 5", type: "tower", person: null, lastAlert: 0 },
-            { id: 6, name: "KULE 6", type: "tower", person: null, lastAlert: 0 },
-            { id: 7, name: "KULE 7", type: "tower", person: null, lastAlert: 0 },
-            { id: 8, name: "KULE 8", type: "tower", person: null, lastAlert: 0 },
-            { id: 9, name: "KULE 9", type: "tower", person: null, lastAlert: 0 },
-            { id: 10, name: "KULE 10", type: "tower", person: null, lastAlert: 0 },
-            { id: 11, name: "KULE 11", type: "tower", person: null, lastAlert: 0 },
-            { id: 12, name: "KULE 12", type: "tower", person: null, lastAlert: 0 },
-            // Noktalar
-            { id: 101, name: "DUPAT KAPI", type: "point", person: null, lastAlert: 0 },
-            { id: 102, name: "DUPAT KULE", type: "point", person: null, lastAlert: 0 },
-            { id: 103, name: "MERMİ KAPI", type: "point", person: null, lastAlert: 0 },
-            { id: 104, name: "İMLA KAPI", type: "point", person: null, lastAlert: 0 },
-            { id: 105, name: "EL BOMBA", type: "point", person: null, lastAlert: 0 },
-            { id: 106, name: "PROTOKOL", type: "point", person: null, lastAlert: 0 },
-            { id: 107, name: "İNŞAAT", type: "point", person: null, lastAlert: 0 },
-            { id: 108, name: "TNT İNŞ.", type: "point", person: null, lastAlert: 0 }
+        // ============ KONFİGÜRASYON ============
+        // BURAYA KENDİ FIREBASE BİLGİLERİNİZİ GİRİN
+        const firebaseConfig = {
+            apiKey: "AIzaSyBgr8kdZugKAqcX2yba-kkWgrzaN7RBPpM",
+  authDomain: "guvenlik-sistem-51b2d.firebaseapp.com",
+  databaseURL: "https://guvenlik-sistem-51b2d-default-rtdb.firebaseio.com",
+  projectId: "guvenlik-sistem-51b2d",
+  storageBucket: "guvenlik-sistem-51b2d.firebasestorage.app",
+  messagingSenderId: "122625312481",
+  appId: "1:122625312481:web:b069015618dfccff4419a0",
+        };
+
+        // Admin telefon numaraları (Sorumlular)
+        const ADMIN_PHONES = ['5550504406', '5423497166']; // Buraya admin numaralarını ekleyin
+
+        // Lokasyonlar
+        const LOCATIONS = [
+            { id: 'k1', name: 'KULE 1', type: 'tower', icon: '🏢' },
+            { id: 'k2', name: 'KULE 2', type: 'tower', icon: '🏢' },
+            { id: 'k3', name: 'KULE 3', type: 'tower', icon: '🏢' },
+            { id: 'k4', name: 'KULE 4', type: 'tower', icon: '🏢' },
+            { id: 'k5', name: 'KULE 5', type: 'tower', icon: '🏢' },
+            { id: 'k6', name: 'KULE 6', type: 'tower', icon: '🏢' },
+            { id: 'k7', name: 'KULE 7', type: 'tower', icon: '🏢' },
+            { id: 'k8', name: 'KULE 8', type: 'tower', icon: '🏢' },
+            { id: 'k9', name: 'KULE 9', type: 'tower', icon: '🏢' },
+            { id: 'k10', name: 'KULE 10', type: 'tower', icon: '🏢' },
+            { id: 'k11', name: 'KULE 11', type: 'tower', icon: '🏢' },
+            { id: 'k12', name: 'KULE 12', type: 'tower', icon: '🏢' },
+            { id: 'd1', name: 'DUPAT KAPI', type: 'gate', icon: '🚪' },
+            { id: 'd2', name: 'MERMİ KAPI', type: 'gate', icon: '🚪' },
+            { id: 'd3', name: 'İMLA KAPI', type: 'gate', icon: '🚪' },
+            { id: 'd4', name: 'PROTOKOL', type: 'gate', icon: '🚪' },
+            { id: 'o1', name: 'EL BOMBA', type: 'other', icon: '💣' },
+            { id: 'o2', name: 'DUPAT KUL', type: 'other', icon: '🏭' },
+            { id: 'o3', name: 'İNŞAAT', type: 'other', icon: '🏗️' },
+            { id: 'o4', name: 'TNT İNŞ.', type: 'other', icon: '🏗️' }
         ];
 
+        // ============ DEĞİŞKENLER ============
         let currentUser = null;
         let selectedLocation = null;
-        let notifications = [];
+        let db = null;
+        let userRef = null;
+        let locationsRef = null;
 
-        // ============ GİRİŞ/ÇIKIŞ ============
-        function selectRole(role) {
-            document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(role === 'admin' ? 'roleAdmin' : 'roleUser').classList.add('active');
-            currentUser = { role: role };
-        }
-
-        function doLogin() {
-            const name = document.getElementById('loginName').value.trim();
-            const surname = document.getElementById('loginSurname').value.trim();
-
-            if (!currentUser) { alert('Rol seçin!'); return; }
-            if (!name || !surname) { alert('Ad ve soyad girin!'); return; }
-
-            currentUser.name = name;
-            currentUser.surname = surname;
-            currentUser.fullName = name + ' ' + surname;
-
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'flex';
-
-            // UI Güncelle
-            const badge = document.getElementById('userBadge');
-            if (currentUser.role === 'admin') {
-                badge.textContent = '👮 Vardiya Sorumlusu';
-                badge.classList.add('admin');
-                document.getElementById('emergencyBtn').style.display = 'block';
-            } else {
-                badge.textContent = '🛡️ ' + currentUser.fullName;
+        // ============ BAŞLATMA ============
+        window.onload = function() {
+            // Firebase başlat
+            if (firebaseConfig.apiKey.includes('...')) {
+                showToast('⚠️ Firebase ayarlarını yapmalısınız!', 'alert');
+                document.getElementById('loadingScreen').style.display = 'none';
+                return;
             }
 
-            renderGrid();
-            updateClock();
-            setInterval(updateClock, 1000);
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
 
-            addNotification('Sistem', `Hoş geldiniz, ${currentUser.fullName}!`, 'system');
+            // Kullanıcı kontrolü
+            const savedUser = localStorage.getItem('guvenlik_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                initApp();
+            } else {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
+        };
+
+        // ============ GİRİŞ/ÇIKIŞ ============
+        function doLogin() {
+            const phone = document.getElementById('loginPhone').value.trim();
+            const name = document.getElementById('loginName').value.trim();
+            const errorDiv = document.getElementById('loginError');
+
+            // Doğrulama
+            if (phone.length !== 10) {
+                errorDiv.textContent = 'Telefon 10 hane olmalı! (5XX XXX XXXX)';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (!name) {
+                errorDiv.textContent = 'Ad soyad girin!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Admin kontrolü
+            const isAdmin = ADMIN_PHONES.includes(phone);
+
+            currentUser = {
+                phone: phone,
+                name: name,
+                isAdmin: isAdmin,
+                photo: null,
+                entries: 0,
+                totalHours: 0,
+                currentLocation: null,
+                loginTime: Date.now()
+            };
+
+            // Kaydet
+            localStorage.setItem('guvenlik_user', JSON.stringify(currentUser));
+
+            // Firebase'e kullanıcı kaydet
+            db.ref('users/' + phone).set(currentUser);
+
+            initApp();
         }
 
         function doLogout() {
-            location.reload();
+            if (confirm('Hesabınız silinecek ve sıfırlanacak. Emin misiniz?')) {
+                // Aktif konumdan çık
+                if (currentUser.currentLocation) {
+                    exitLocation(currentUser.currentLocation);
+                }
+
+                localStorage.removeItem('guvenlik_user');
+                location.reload();
+            }
         }
 
-        // ============ SAAT & TOM ============
+        // ============ UYGULAMA BAŞLATMA ============
+        function initApp() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'flex';
+
+            // Header güncelle
+            document.getElementById('headerName').textContent = currentUser.name;
+            document.getElementById('headerRole').textContent = currentUser.isAdmin ? 'Vardiya Sorumlusu' : 'Güvenlik Görevlisi';
+            if (currentUser.isAdmin) {
+                document.getElementById('headerRole').innerHTML += ' <span class="admin-badge">ADMIN</span>';
+            }
+
+            // Profil güncelle
+            document.getElementById('profileName').textContent = currentUser.name;
+            document.getElementById('profileRole').textContent = currentUser.isAdmin ? 'Vardiya Sorumlusu' : 'Güvenlik Görevlisi';
+            document.getElementById('statEntries').textContent = currentUser.entries || 0;
+            document.getElementById('statHours').textContent = currentUser.totalHours || 0;
+
+            // Fotoğraf varsa göster
+            if (currentUser.photo) {
+                document.getElementById('headerAvatar').innerHTML = `<img src="${currentUser.photo}">`;
+                document.getElementById('profileAvatar').innerHTML = `<img src="${currentUser.photo}"><div class="change-photo" onclick="changePhoto()">📷 Değiştir</div>`;
+            }
+
+            // Saat başlat
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Firebase dinleyicileri
+            setupFirebaseListeners();
+        }
+
         function updateClock() {
             const now = new Date();
             document.getElementById('clock').textContent = 
@@ -851,320 +728,322 @@
         }
 
         function showTomAlert() {
-            const alert = document.getElementById('tomAlert');
-            alert.style.display = 'block';
+            showToast('🚨 TOM BASILACAK!', 'alert');
             playSound();
-            addNotification('⏰ TOM', 'Tom basılacak! Saat başı hatırlatma.', 'system');
-            setTimeout(() => alert.style.display = 'none', 5000);
         }
 
         function playSound() {
-            const audio = document.getElementById('alertSound');
+            const audio = document.getElementById('notifSound');
             audio.currentTime = 0;
             audio.play().catch(e => console.log('Ses hatası:', e));
+
+            // 2 saniye sonra durdur
+            setTimeout(() => {
+                audio.pause();
+            }, 2000);
         }
 
-        // ============ GRİD RENDER ============
-        function renderGrid() {
-            const towers = locations.filter(l => l.type === 'tower');
-            const points = locations.filter(l => l.type === 'point');
+        // ============ FIREBASE DİNLEYİCİLER ============
+        function setupFirebaseListeners() {
+            // Lokasyonları dinle
+            db.ref('locations').on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                renderLocations(data);
+                renderActiveList(data);
+            });
 
-            document.getElementById('towerGrid').innerHTML = towers.map(loc => createCard(loc)).join('');
-            document.getElementById('pointGrid').innerHTML = points.map(loc => createCard(loc)).join('');
-
-            updateStats();
-            updateActiveList();
-        }
-
-        function createCard(loc) {
-            const isOccupied = loc.person !== null;
-            const canAlert = isOccupied && (Date.now() - loc.lastAlert > 300000); // 5 dk
-
-            let html = `<div class="location-card ${isOccupied ? 'occupied' : ''}" id="loc-${loc.id}">`;
-            html += `<div class="card-header">`;
-            html += `<div class="card-title">${loc.name}</div>`;
-            html += `<div class="card-status"></div>`;
-            html += `</div>`;
-
-            html += `<div class="card-body">`;
-            if (isOccupied) {
-                html += `<div class="person-info">`;
-                html += `<div class="person-name">${loc.person.name}</div>`;
-                html += `<div class="person-meta">🕐 ${loc.person.time} | 📱 ${loc.person.phone}</div>`;
-                html += `</div>`;
-            } else {
-                html += `<div class="empty-state">Boş</div>`;
-            }
-            html += `</div>`;
-
-            html += `<div class="card-actions">`;
-            if (isOccupied) {
-                // Sadece sorumlu herkese mesaj atabilir
-                if (currentUser.role === 'admin') {
-                    html += `<button class="action-btn btn-msg" onclick="quickMessage(${loc.id})" title="Mesaj"><span class="icon">✉️</span><span class="label">Mesaj</span></button>`;
+            // Bildirimleri dinle
+            db.ref('notifications').on('child_added', (snapshot) => {
+                const notif = snapshot.val();
+                if (notif.timestamp > Date.now() - 300000) { // Son 5 dk
+                    showToast(notif.message, notif.type);
+                    playSound();
                 }
-                html += `<a href="https://wa.me/90${loc.person.phone}" target="_blank" class="action-btn btn-wp" title="WhatsApp"><span class="icon">💬</span><span class="label">WP</span></a>`;
-                html += `<a href="tel:+90${loc.person.phone}" class="action-btn btn-call" title="Ara"><span class="icon">📞</span><span class="label">Ara</span></a>`;
-                html += `<button class="action-btn btn-out" onclick="exitLocation(${loc.id})" title="Çıkış"><span class="icon">🚪</span><span class="label">Çık</span></button>`;
-            } else {
-                html += `<button class="action-btn btn-in" onclick="enterLocation(${loc.id})" style="grid-column: span 4;" title="Giriş"><span class="icon">✋</span><span class="label">Giriş Yap</span></button>`;
-            }
-            html += `</div>`;
-
-            html += `</div>`;
-            return html;
+            });
         }
 
-        function updateStats() {
-            const occupied = locations.filter(l => l.person).length;
-            document.getElementById('statOccupied').textContent = occupied;
-            document.getElementById('statEmpty').textContent = locations.length - occupied;
-        }
+        // ============ LOKASYON RENDER ============
+        function renderLocations(locationsData) {
+            const towerGrid = document.getElementById('towerGrid');
+            const gateGrid = document.getElementById('gateGrid');
+            const otherGrid = document.getElementById('otherGrid');
 
-        function updateActiveList() {
-            const active = locations.filter(l => l.person);
-            document.getElementById('activeCount').textContent = active.length;
+            towerGrid.innerHTML = '';
+            gateGrid.innerHTML = '';
+            otherGrid.innerHTML = '';
 
-            const container = document.getElementById('activeList');
-            if (active.length === 0) {
-                container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Aktif görevli yok</div>';
-                return;
-            }
+            LOCATIONS.forEach(loc => {
+                const data = locationsData[loc.id] || {};
+                const isOccupied = !!data.person;
+                const isMe = data.person && data.person.phone === currentUser.phone;
+                const isMyLocation = currentUser.currentLocation === loc.id;
 
-            container.innerHTML = active.map(loc => `
-                <div class="active-person" onclick="focusLocation(${loc.id})">
-                    <div class="person-avatar">${loc.person.name.charAt(0)}</div>
-                    <div class="person-details">
-                        <div class="person-name-small">${loc.person.name}</div>
-                        <div class="person-loc">${loc.name}</div>
-                    </div>
-                    <div class="person-actions">
-                        <button class="person-btn" onclick="event.stopPropagation();quickMessage(${loc.id})" title="Mesaj">✉️</button>
-                        <a href="https://wa.me/90${loc.person.phone}" target="_blank" class="person-btn" onclick="event.stopPropagation()" title="WP">💬</a>
-                    </div>
-                </div>
-            `).join('');
+                const card = document.createElement('div');
+                card.className = `location-card ${isOccupied ? 'occupied' : ''} ${isMe ? 'me' : ''}`;
+
+                let html = `
+                    <div class="card-icon">${loc.icon}</div>
+                    <div class="card-name">${loc.name}</div>
+                `;
+
+                if (isOccupied) {
+                    html += `<div class="card-person">${data.person.name}</div>`;
+
+                    if (isMe) {
+                        html += `<button class="card-btn btn-exit" onclick="exitLocation('${loc.id}')">🚪 Çık</button>`;
+                    } else {
+                        html += `<button class="card-btn btn-info" onclick="viewPerson('${loc.id}')">👤 Bilgi</button>`;
+                    }
+                } else {
+                    // Boşsa ve ben başka yerde değilsem giriş yapabilirim
+                    if (!currentUser.currentLocation) {
+                        html += `<button class="card-btn btn-enter" onclick="enterLocation('${loc.id}')">✋ Giriş</button>`;
+                    } else {
+                        html += `<button class="card-btn btn-disabled" disabled>🔒 Dolu</button>`;
+                    }
+                }
+
+                card.innerHTML = html;
+
+                // Grid'e ekle
+                if (loc.type === 'tower') towerGrid.appendChild(card);
+                else if (loc.type === 'gate') gateGrid.appendChild(card);
+                else otherGrid.appendChild(card);
+            });
         }
 
         // ============ GİRİŞ/ÇIKIŞ İŞLEMLERİ ============
-        function enterLocation(id) {
-            selectedLocation = locations.find(l => l.id === id);
-            document.getElementById('entryLocationName').textContent = selectedLocation.name;
+        function enterLocation(locId) {
+            // Başka yerde mi kontrol et
+            if (currentUser.currentLocation) {
+                showToast('⚠️ Önce mevcut konumunuzdan çıkın!', 'alert');
+                return;
+            }
+
+            selectedLocation = locId;
+            const loc = LOCATIONS.find(l => l.id === locId);
+            document.getElementById('entryLocName').textContent = loc.name;
             document.getElementById('entryModal').style.display = 'flex';
         }
 
         function confirmEntry() {
-            const name = document.getElementById('entryPersonName').value.trim();
-            const phone = document.getElementById('entryPersonPhone').value.trim();
+            if (!selectedLocation) return;
 
-            if (!name || !phone) {
-                alert('Tüm alanları doldurun!');
-                return;
+            const loc = LOCATIONS.find(l => l.id === selectedLocation);
+            const now = Date.now();
+
+            // Firebase'e kaydet
+            db.ref('locations/' + selectedLocation).set({
+                person: {
+                    phone: currentUser.phone,
+                    name: currentUser.name,
+                    photo: currentUser.photo,
+                    entryTime: now
+                },
+                timestamp: now
+            });
+
+            // Kullanıcıyı güncelle
+            currentUser.currentLocation = selectedLocation;
+            currentUser.entries = (currentUser.entries || 0) + 1;
+            currentUser.lastEntryTime = now;
+
+            saveUser();
+
+            // Bildirim gönder
+            db.ref('notifications').push({
+                message: `🟢 ${currentUser.name} → ${loc.name}`,
+                type: 'success',
+                timestamp: now
+            });
+
+            closeModal();
+            showToast(`✅ ${loc.name} konumuna girdiniz`, 'success');
+        }
+
+        function exitLocation(locId) {
+            const loc = LOCATIONS.find(l => l.id === locId);
+
+            // Firebase'den sil
+            db.ref('locations/' + locId).remove();
+
+            // Süreyi hesapla
+            let hours = 0;
+            if (currentUser.lastEntryTime) {
+                const duration = Date.now() - currentUser.lastEntryTime;
+                hours = Math.round(duration / 3600000 * 10) / 10;
+                currentUser.totalHours = (currentUser.totalHours || 0) + hours;
             }
 
-            const time = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
-            selectedLocation.person = { name, phone, time };
+            currentUser.currentLocation = null;
+            saveUser();
 
-            addNotification('🟢 Giriş', `${selectedLocation.name}: ${name} giriş yaptı.`, 'info');
-            closeModal('entryModal');
-            renderGrid();
+            // Bildirim
+            db.ref('notifications').push({
+                message: `🔴 ${currentUser.name} ← ${loc.name} (${hours} saat)`,
+                type: 'alert',
+                timestamp: Date.now()
+            });
 
-            // Input temizle
-            document.getElementById('entryPersonName').value = '';
-            document.getElementById('entryPersonPhone').value = '';
+            showToast(`🚪 ${loc.name} konumundan çıktınız`, 'alert');
         }
 
-        function exitLocation(id) {
-            if (!confirm('Çıkış yapmak istiyor musunuz?')) return;
+        function viewPerson(locId) {
+            db.ref('locations/' + locId).once('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.person) {
+                    const phone = data.person.phone;
+                    const message = `${data.person.name} - ${phone}`;
 
-            const loc = locations.find(l => l.id === id);
-            addNotification('🔴 Çıkış', `${loc.name}: ${loc.person.name} çıkış yaptı.`, 'alert');
+                    if (confirm(message + "
 
-            loc.person = null;
-            renderGrid();
+WhatsApp'tan yazmak ister misiniz?")) {
+                        window.open(`https://wa.me/90${phone}`, '_blank');
+                    }
+                }
+            });
         }
 
-        // ============ MESAJ SİSTEMİ ============
-        function showMessageModal() {
-            renderRecipientList();
-            document.getElementById('messageModal').style.display = 'flex';
-        }
+        // ============ AKTİF LİSTE ============
+        function renderActiveList(locationsData) {
+            const list = document.getElementById('activeList');
+            list.innerHTML = '';
 
-        function renderRecipientList() {
-            const active = locations.filter(l => l.person);
-            const container = document.getElementById('recipientList');
+            const active = [];
+            Object.keys(locationsData).forEach(key => {
+                if (locationsData[key].person) {
+                    active.push({
+                        locId: key,
+                        ...locationsData[key].person
+                    });
+                }
+            });
 
             if (active.length === 0) {
-                container.innerHTML = '<div style="padding:10px;color:#888;">Aktif görevli yok</div>';
+                list.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7280;">Aktif görevli yok</div>';
                 return;
             }
 
-            container.innerHTML = active.map(loc => `
-                <div class="person-select-item" onclick="toggleRecipient(this, ${loc.id})">
-                    <input type="checkbox" class="select-checkbox" data-id="${loc.id}">
-                    <div style="flex:1;">
-                        <div style="font-weight:600;">${loc.person.name}</div>
-                        <div style="font-size:0.8em;color:#888;">${loc.name}</div>
+            active.forEach(person => {
+                const loc = LOCATIONS.find(l => l.id === person.locId);
+                const div = document.createElement('div');
+                div.className = 'list-item';
+
+                const isMe = person.phone === currentUser.phone;
+
+                div.innerHTML = `
+                    <div class="list-avatar">
+                        ${person.photo ? `<img src="${person.photo}">` : person.name.charAt(0)}
                     </div>
-                </div>
-            `).join('');
-        }
+                    <div class="list-info">
+                        <div class="list-name">${person.name} ${isMe ? '(Siz)' : ''}</div>
+                        <div class="list-loc">${loc ? loc.name : 'Bilinmiyor'}</div>
+                    </div>
+                    <div class="list-actions">
+                        <button class="list-btn btn-wp" onclick="window.open('https://wa.me/90${person.phone}', '_blank')">💬</button>
+                        <button class="list-btn btn-call" onclick="window.location.href='tel:+90${person.phone}'">📞</button>
+                    </div>
+                `;
 
-        function toggleRecipient(element, id) {
-            element.classList.toggle('selected');
-            const checkbox = element.querySelector('.select-checkbox');
-            checkbox.checked = !checkbox.checked;
-        }
-
-        function setQuickMessage(text) {
-            if (text) document.getElementById('messageText').value = text;
-        }
-
-        function sendMessage() {
-            const text = document.getElementById('messageText').value.trim();
-            const selected = document.querySelectorAll('.person-select-item.selected');
-
-            if (!text) { alert('Mesaj yazın!'); return; }
-            if (selected.length === 0) { alert('Alıcı seçin!'); return; }
-
-            selected.forEach(item => {
-                const id = parseInt(item.querySelector('.select-checkbox').dataset.id);
-                const loc = locations.find(l => l.id === id);
-
-                addNotification('✉️ Özel Mesaj', 
-                    `${currentUser.fullName} → ${loc.person.name}: ${text}`, 
-                    'private');
+                list.appendChild(div);
             });
-
-            playSound();
-            closeModal('messageModal');
-            document.getElementById('messageText').value = '';
-
-            alert(`${selected.length} kişiye mesaj gönderildi!`);
         }
 
-        function quickMessage(locId) {
-            const loc = locations.find(l => l.id === locId);
-            document.getElementById('messageText').value = '';
+        // ============ PROFİL İŞLEMLERİ ============
+        function updateName() {
+            const newName = document.getElementById('editName').value.trim();
+            if (!newName) {
+                showToast('İsim girin!', 'alert');
+                return;
+            }
 
-            // Sadece bu kişiyi seç
-            renderRecipientList();
+            currentUser.name = newName;
+            saveUser();
+
+            document.getElementById('headerName').textContent = newName;
+            document.getElementById('profileName').textContent = newName;
+            document.getElementById('editName').value = '';
+
+            showToast('✅ İsim güncellendi', 'success');
+        }
+
+        function changePhoto() {
+            document.getElementById('photoInput').click();
+        }
+
+        function uploadPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Base64'e çevir (gerçek uygulamada Firebase Storage kullanın)
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentUser.photo = e.target.result;
+                saveUser();
+
+                // Göster
+                document.getElementById('headerAvatar').innerHTML = `<img src="${e.target.result}">`;
+                document.getElementById('profileAvatar').innerHTML = `<img src="${e.target.result}"><div class="change-photo" onclick="changePhoto()">📷 Değiştir</div>`;
+
+                showToast('✅ Fotoğraf güncellendi', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============ YARDIMCI FONKSİYONLAR ============
+        function saveUser() {
+            localStorage.setItem('guvenlik_user', JSON.stringify(currentUser));
+            db.ref('users/' + currentUser.phone).update(currentUser);
+        }
+
+        function showTab(tab) {
+            // Tüm içerikleri gizle
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('listContent').style.display = 'none';
+            document.getElementById('profileContent').style.display = 'none';
+
+            // Nav aktifliğini kaldır
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            // Seçileni göster
+            if (tab === 'main') {
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('navMain').classList.add('active');
+            } else if (tab === 'list') {
+                document.getElementById('listContent').style.display = 'block';
+                document.getElementById('navList').classList.add('active');
+            } else if (tab === 'profile') {
+                document.getElementById('profileContent').style.display = 'block';
+                document.getElementById('navProfile').classList.add('active');
+            }
+        }
+
+        function showProfile() {
+            showTab('profile');
+        }
+
+        function closeModal() {
+            document.getElementById('entryModal').style.display = 'none';
+            selectedLocation = null;
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+
             setTimeout(() => {
-                const items = document.querySelectorAll('.person-select-item');
-                items.forEach(item => {
-                    if (item.textContent.includes(loc.person.name)) {
-                        item.classList.add('selected');
-                        item.querySelector('.select-checkbox').checked = true;
-                    }
-                });
-            }, 100);
-
-            document.getElementById('messageModal').style.display = 'flex';
-        }
-
-        // ============ ACİL DURUM ============
-        function showEmergencyModal() {
-            document.getElementById('emergencyModal').style.display = 'flex';
-        }
-
-        function sendEmergency() {
-            const type = document.getElementById('emergencyType').value;
-            const text = document.getElementById('emergencyText').value.trim();
-
-            const types = {
-                'alert': '⚠️ GENEL UYARI',
-                'intrusion': '🚷 İZİNSİZ GİRİŞ',
-                'fire': '🔥 YANGIN ALARMI',
-                'medical': '🏥 SAĞLIK OLAYI',
-                'bomb': '💣 ŞÜPHELİ PAKET'
-            };
-
-            const msg = `${types[type]} | ${text || 'Acil durum! Tüm personel dikkat!'}`;
-
-            addNotification('🚨 ACİL', msg, 'alert');
-            playSound();
-
-            // Tüm kartları kırmızı yap
-            document.querySelectorAll('.location-card').forEach(card => {
-                card.classList.add('alert');
-                setTimeout(() => card.classList.remove('alert'), 10000);
-            });
-
-            closeModal('emergencyModal');
-            document.getElementById('emergencyText').value = '';
-
-            alert('🚨 Acil durum bildirimi tüm personele gönderildi!');
-        }
-
-        // ============ BİLDİRİMLER ============
-        function addNotification(title, text, type = 'info') {
-            const notif = {
-                id: Date.now(),
-                title,
-                text,
-                type,
-                time: new Date().toLocaleTimeString('tr-TR')
-            };
-            notifications.unshift(notif);
-            renderNotifications();
-        }
-
-        function renderNotifications() {
-            const container = document.getElementById('notificationList');
-            if (notifications.length === 0) {
-                container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Henüz bildirim yok</div>';
-                return;
-            }
-
-            container.innerHTML = notifications.map(n => `
-                <div class="notification-item ${n.type}">
-                    <button class="notif-close" onclick="removeNotification(${n.id})">×</button>
-                    <div class="notif-header">
-                        <div class="notif-title">${n.title}</div>
-                    </div>
-                    <div class="notif-body">${n.text}</div>
-                    <div class="notif-footer">
-                        <span>${n.time}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function removeNotification(id) {
-            notifications = notifications.filter(n => n.id !== id);
-            renderNotifications();
-        }
-
-        function clearNotifications() {
-            notifications = [];
-            renderNotifications();
-        }
-
-        // ============ MODAL YÖNETİMİ ============
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+                toast.classList.remove('show');
+            }, 3000);
         }
 
         // Modal dışına tıklama
         window.onclick = function(e) {
-            if (e.target.classList.contains('modal-overlay')) {
-                e.target.style.display = 'none';
+            if (e.target.classList.contains('modal')) {
+                closeModal();
             }
         }
-
-        // ESC tuşu
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
-            }
-        });
-
-        // Enter tuşu
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && document.getElementById('entryModal').style.display === 'flex') {
-                confirmEntry();
-            }
-        });
     </script>
 </body>
 </html>
